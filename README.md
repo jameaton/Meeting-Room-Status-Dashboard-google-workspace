@@ -94,7 +94,7 @@ Weekly meeting heatmaps
 
 🧑‍💻 Maintainer
 James Eaton
-IT Engineer @ Airfinity
+IT Engineer
 Feel free to fork, improve, or raise issues!
 
 📄 License
