@@ -1,0 +1,210 @@
+// FULL CODE WITH CUSTOM BACKGROUND FROM GOOGLE DRIVE DIRECT LINK
+const ROOM_CALENDARS = [
+  { name: "Copenhagen", id: "c_18841ppncrmdegptgj761campgn2a@resource.calendar.google.com" },
+  { name: "DC",         id: "c_188e6ripde7oqgtuj18mi4om4ibqi@resource.calendar.google.com" },
+  { name: "Tokyo",      id: "c_18816qkg0f7u8gv8k5jqmqiihdlno@resource.calendar.google.com" }
+];
+
+function doGet() {
+  return HtmlService.createHtmlOutput(renderStatusPage())
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function renderStatusPage() {
+  const now = new Date();
+  const in15mins = new Date(now.getTime() + 15 * 60 * 1000);
+  const in8hrs = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+
+  const weekNumber = getWeekNumber(now);
+  const dayName = now.toLocaleDateString('en-GB', { weekday: 'long' });
+
+  const statuses = ROOM_CALENDARS.map(room => {
+    try {
+      const calendar = CalendarApp.getCalendarById(room.id);
+      const nowTo15 = calendar.getEvents(now, in15mins);
+      const allToday = calendar.getEvents(now, in8hrs);
+
+      let status = "Free", title = "", currentRange = "", currentOwner = "";
+      if (nowTo15.length > 0) {
+        const event = nowTo15[0];
+        const isPrivate = event.getVisibility() === CalendarApp.Visibility.PRIVATE;
+        title = isPrivate ? "Private meeting" : event.getTitle();
+        currentRange = formatRange(event.getStartTime(), event.getEndTime());
+        currentOwner = isPrivate ? "Private attendee" : obfuscateEmail(event.getCreators()[0] || "Unknown");
+        status = "Busy";
+      }
+
+      let nextTitle = "No upcoming meetings", nextRange = "", nextOwner = "";
+      for (let event of allToday) {
+        const start = event.getStartTime();
+        const afterCurrent = status === "Free" || start > nowTo15[0]?.getEndTime();
+        if (afterCurrent) {
+          const isPrivate = event.getVisibility() === CalendarApp.Visibility.PRIVATE;
+          nextTitle = isPrivate ? "Private meeting" : event.getTitle();
+          nextRange = formatRange(event.getStartTime(), event.getEndTime());
+          nextOwner = isPrivate ? "Private attendee" : obfuscateEmail(event.getCreators()[0] || "Unknown");
+          break;
+        }
+      }
+
+      return {
+        name: room.name,
+        status,
+        title,
+        currentRange,
+        currentOwner,
+        nextTitle,
+        nextRange,
+        nextOwner
+      };
+    } catch (error) {
+      return {
+        name: room.name,
+        status: "Error",
+        title: "Could not fetch events",
+        currentRange: "",
+        currentOwner: "-",
+        nextTitle: "-",
+        nextRange: "",
+        nextOwner: "-"
+      };
+    }
+  });
+
+  return `
+    <html>
+      <head>
+        <meta http-equiv="refresh" content="300">
+        <style>
+          /* Cache background image aggressively */
+          html { 
+            background: none !important; 
+          }
+          body {
+            font-family: Arial, sans-serif;
+            background: url('https://lh3.googleusercontent.com/d/1B9lmzqg1hYXOqpYTeUvrs48pfvLF-3xy=w1920') no-repeat center center fixed;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: cover;
+            image-rendering: auto;
+            -webkit-backface-visibility: hidden;
+            -webkit-perspective: 1000;
+            will-change: background-image;
+            background-size: cover;
+            margin: 0;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .clock {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.2em;
+            color: #fff;
+            font-weight: bold;
+          }
+          .room-block {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 10px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            text-align: center;
+          }
+          .free { color: green; font-weight: bold; }
+          .busy { color: red; font-weight: bold; }
+          .error { color: gray; font-weight: bold; }
+          .next-box {
+            margin-top: 10px;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9em;
+          }
+          .range { font-size: 0.85em; color: #444; }
+          .owner { font-size: 0.8em; color: #777; margin-top: 4px; }
+          footer { margin-top: 40px; font-size: 0.85em; color: #fff; text-shadow: 0 1px 2px #000; }
+          .meta-section { margin: 15px 0; text-align: center; color: #fff; text-shadow: 0 1px 2px #000; font-size: 0.9em; }
+        </style>
+        <script>
+          function updateClock() {
+            const now = new Date();
+            let h = now.getHours();
+            const m = now.getMinutes().toString().padStart(2, '0');
+            const s = now.getSeconds().toString().padStart(2, '0');
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12 || 12;
+            document.getElementById('clock').textContent = h + ':' + m + ':' + s + ' ' + ampm;
+          }
+          setInterval(updateClock, 1000);
+          window.onload = updateClock;
+        </script>
+      </head>
+      <body>
+        <div class="clock" id="clock"></div>
+        <div class="meta-section">${dayName} – Week ${weekNumber}</div>
+        <h1 style="color:white; text-shadow:0 2px 4px #000">Meeting Room Status</h1>
+        ${statuses.map(room => `
+          <div class="room-block">
+            <h2>${room.name}</h2>
+            <p class="${room.status.toLowerCase()}">${room.status}</p>
+            ${room.title ? `<p>${room.title}</p>` : ""}
+            ${room.currentRange ? `<p class="range">${room.currentRange}</p>` : ""}
+            ${room.currentOwner ? `<div class="owner">Booked by: ${room.currentOwner}</div>` : ""}
+            <div class="next-box">
+              <strong>Next:</strong> ${room.nextTitle}
+              ${room.nextRange ? `<div class="range">${room.nextRange}</div>` : ""}
+              ${room.nextOwner ? `<div class="owner">Booked by: ${room.nextOwner}</div>` : ""}
+            </div>
+          </div>
+        `).join("")}
+
+        <footer>
+          🔄 Last refreshed: ${formatFullDateTimeWithTimezone(new Date())}
+        </footer>
+      </body>
+    </html>
+  `;
+}
+
+function formatRange(start, end) {
+  return `${formatTime(start)} – ${formatTime(end)}`;
+}
+
+function formatTime(date) {
+  let h = date.getHours();
+  const m = date.getMinutes().toString().padStart(2, '0');
+  const suffix = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${m} ${suffix}`;
+}
+
+function formatFullDateTimeWithTimezone(date) {
+  const day = date.getDate();
+  const month = date.toLocaleString('en-GB', { month: 'long' });
+  const year = date.getFullYear();
+  let hour = date.getHours();
+  const mins = date.getMinutes().toString().padStart(2, '0');
+  const suffix = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+  const tz = date.toLocaleTimeString('en-GB', { timeZoneName: 'short' }).split(' ')[2] || 'UTC';
+  return `${day} ${month} ${year}, ${hour}:${mins} ${suffix} ${tz}`;
+}
+
+function getWeekNumber(date) {
+  const firstDay = new Date(date.getFullYear(), 0, 1);
+  const dayOffset = (date - firstDay + 86400000) / 86400000;
+  return Math.ceil((dayOffset + firstDay.getDay() + 1) / 7);
+}
+
+function obfuscateEmail(email) {
+  if (!email.includes('@')) return email;
+  const [user, domain] = email.split('@');
+  const shown = user.length > 3 ? user.slice(0, 3) + '***' : user[0] + '**';
+  return `${shown}@${domain}`;
+}
