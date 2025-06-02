@@ -17,13 +17,6 @@ A sleek and auto-refreshing Google Apps Script web app that shows **free/busy st
 - 🌄 Beautiful full-screen background (from Google Drive)
 
 ---
-
-## 🚀 Live Preview
-
-![screenshot](https://your-screenshot-link-if-hosted.png)
-
----
-
 ## 🛠️ How It Works
 
 This app uses:
@@ -41,7 +34,7 @@ Ensure your rooms are **Google Workspace resource calendars**. Get their email a
 ### 2. Open Google Apps Script
 
 1. Visit [script.new](https://script.new)
-2. Paste in the full code from [`Code.gs`](./Code.gs)
+2. Paste in the full code from https://github.com/jameaton/Meeting-Room-Status-Dashboard-google-workspace/blob/main/full%20code 
 3. Update the `ROOM_CALENDARS` array with your actual room names and IDs:
    ```js
    const ROOM_CALENDARS = [
